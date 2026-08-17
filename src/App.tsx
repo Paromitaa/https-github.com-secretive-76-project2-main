@@ -1,0 +1,149 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Route as RouteIcon, Upload, Users, BookOpen } from 'lucide-react';
+import { ThemeProvider } from '@/components/providers/theme-provider';
+import { AuthProvider } from '@/components/providers/auth-provider';
+import { ProtectedRoute } from '@/components/auth/protected-route';
+import { AppLayout } from '@/components/layout/app-layout';
+import { LandingPage } from '@/pages/landing';
+import { LoginPage } from '@/pages/auth/login';
+import { SignupPage } from '@/pages/auth/signup';
+import { ForgotPasswordPage } from '@/pages/auth/forgot-password';
+import { DashboardPage } from '@/pages/dashboard';
+import { CatalogPage } from '@/pages/catalog';
+import { CourseDetailPage } from '@/pages/course-detail';
+import { CoursePlayerPage } from '@/pages/course-player';
+import { AICoachPage } from '@/pages/ai-coach';
+import { MyCoursesPage } from '@/pages/my-courses';
+import { LearningPathsPage } from '@/pages/learning-paths';
+import { QuizzesPage } from '@/pages/quizzes';
+import { LabsPage } from '@/pages/labs';
+import { AchievementsPage } from '@/pages/achievements';
+import { SkillsPage } from '@/pages/skills';
+import { SettingsPage } from '@/pages/settings';
+import { InstructorDashboard } from '@/pages/instructor-dashboard';
+import { AdminDashboard } from '@/pages/admin-dashboard';
+import { PlaceholderPage } from '@/pages/placeholder';
+import { UnauthorizedPage } from '@/pages/unauthorized';
+import { Toaster } from '@/components/ui/sonner';
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Public */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/unauthorized" element={<UnauthorizedPage />} />
+
+            {/* Student routes */}
+            <Route path="/student" element={<ProtectedRoute allowedRole="student" />}>
+              <Route element={<AppLayout />}>
+                <Route index element={<Navigate to="/student/dashboard" replace />} />
+                <Route path="dashboard" element={<DashboardPage />} />
+                <Route path="browse" element={<CatalogPage />} />
+                <Route path="my-courses" element={<MyCoursesPage />} />
+                <Route path="paths" element={<LearningPathsPage />} />
+                <Route path="ai-coach" element={<AICoachPage />} />
+                <Route path="quizzes" element={<QuizzesPage />} />
+                <Route path="labs" element={<LabsPage />} />
+                <Route path="achievements" element={<AchievementsPage />} />
+                <Route path="skills" element={<SkillsPage />} />
+                <Route path="settings" element={<SettingsPage />} />
+                <Route path="courses/:slug" element={<CourseDetailPage />} />
+                <Route path="courses/:slug/learn" element={<CoursePlayerPage />} />
+                <Route
+                  path="paths/:slug"
+                  element={
+                    <PlaceholderPage
+                      title="Learning Path"
+                      description="A structured journey through a sequence of courses."
+                      icon={RouteIcon}
+                    />
+                  }
+                />
+              </Route>
+            </Route>
+
+            {/* Instructor routes */}
+            <Route path="/instructor" element={<ProtectedRoute allowedRole="instructor" />}>
+              <Route element={<AppLayout />}>
+                <Route index element={<Navigate to="/instructor/dashboard" replace />} />
+                <Route path="dashboard" element={<InstructorDashboard />} />
+                <Route
+                  path="courses"
+                  element={
+                    <PlaceholderPage
+                      title="My Courses"
+                      description="Manage your published courses and drafts."
+                      icon={BookOpen}
+                    />
+                  }
+                />
+                <Route
+                  path="upload"
+                  element={
+                    <PlaceholderPage
+                      title="Upload Course"
+                      description="Create and publish a new course."
+                      icon={Upload}
+                    />
+                  }
+                />
+                <Route
+                  path="students"
+                  element={
+                    <PlaceholderPage
+                      title="Students"
+                      description="Track student progress and engagement."
+                      icon={Users}
+                    />
+                  }
+                />
+                <Route path="settings" element={<SettingsPage />} />
+              </Route>
+            </Route>
+
+            {/* Admin routes */}
+            <Route path="/admin" element={<ProtectedRoute allowedRole="admin" />}>
+              <Route element={<AppLayout />}>
+                <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                <Route path="dashboard" element={<AdminDashboard />} />
+                <Route
+                  path="users"
+                  element={
+                    <PlaceholderPage
+                      title="User Management"
+                      description="Manage platform users, roles, and permissions."
+                      icon={Users}
+                    />
+                  }
+                />
+                <Route
+                  path="courses"
+                  element={
+                    <PlaceholderPage
+                      title="Course Management"
+                      description="Review and moderate all platform courses."
+                      icon={BookOpen}
+                    />
+                  }
+                />
+                <Route path="settings" element={<SettingsPage />} />
+              </Route>
+            </Route>
+
+            {/* Legacy /app redirect */}
+            <Route path="/app/*" element={<Navigate to="/student/dashboard" replace />} />
+
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+          <Toaster richColors position="bottom-right" />
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
+  );
+}
