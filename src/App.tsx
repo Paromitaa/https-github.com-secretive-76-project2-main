@@ -25,6 +25,7 @@ import { AdminDashboard } from '@/pages/admin-dashboard';
 import { PlaceholderPage } from '@/pages/placeholder';
 import { UnauthorizedPage } from '@/pages/unauthorized';
 import { Toaster } from '@/components/ui/sonner';
+import { DevDomainToggle } from '@/components/common/DevDomainToggle';
 
 export default function App() {
   return (
@@ -142,6 +143,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           <Toaster richColors position="bottom-right" />
+          <DevDomainToggle />
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
