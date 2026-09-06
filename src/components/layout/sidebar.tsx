@@ -3,10 +3,31 @@ import { Sparkles, X } from 'lucide-react';
 import { Logo } from '@/components/common/logo';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { navGroups, instructorNavGroups, adminNavGroups } from '@/lib/mock-data';
+import { navGroups, adminNavGroups } from '@/lib/mock-data';
 import { getIcon } from '@/lib/format';
 import { useAuth } from '@/components/providers/auth-provider';
 import { cn } from '@/lib/utils';
+
+// Custom navigation groups specifically for the Instructor portal
+const customInstructorNavGroups = [
+  {
+    label: 'Manage',
+    items: [
+      { label: 'Dashboard', to: '/instructor/dashboard', icon: 'LayoutDashboard' },
+      { label: 'My Courses', to: '/instructor/courses', icon: 'BookOpen' },
+      { label: 'Grading', to: '/instructor/grading', icon: 'GraduationCap' },
+      { label: 'Students', to: '/instructor/students', icon: 'Users' },
+      { label: 'Discussions', to: '/instructor/discussions', icon: 'MessageSquare' },
+      { label: 'AI Content Tools', to: '/instructor/ai-tools', icon: 'Sparkles', badge: 'AI' },
+    ],
+  },
+  {
+    label: 'You',
+    items: [
+      { label: 'Settings', to: '/instructor/settings', icon: 'Settings' },
+    ],
+  },
+];
 
 interface SidebarProps {
   onNavigate?: () => void;
@@ -18,7 +39,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
 
   const groups =
     role === 'instructor'
-      ? instructorNavGroups
+      ? customInstructorNavGroups
       : role === 'admin'
         ? adminNavGroups
         : navGroups;

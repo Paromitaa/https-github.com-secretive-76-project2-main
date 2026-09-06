@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { apiRequest } from '@/lib/api';
 import { useAuth } from '@/components/providers/auth-provider';
 
 export function useLessonNotes(courseId: string, lessonId: string) {
@@ -10,6 +10,7 @@ export function useLessonNotes(courseId: string, lessonId: string) {
   const [saved, setSaved] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Load lesson notes from Go backend
   useEffect(() => {
     if (!user) {
       setLoading(false);
@@ -18,18 +19,16 @@ export function useLessonNotes(courseId: string, lessonId: string) {
     let cancelled = false;
 
     (async () => {
-      const { data, error } = await supabase
-        .from('lesson_notes')
-        .select('content')
-        .eq('user_id', user.id)
-        .eq('course_id', courseId)
-        .eq('lesson_id', lessonId)
-        .maybeSingle();
-
-      if (!cancelled && !error && data) {
-        setContent((data as { content: string }).content ?? '');
+      try {
+        const data = await apiRequest(`/courses/${courseId}/lessons/${lessonId}/notes`);
+        if (!cancelled && data && data.content) {
+          setContent(data.content);
+        }
+      } catch (err) {
+        console.error('Failed to fetch lesson notes:', err);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      if (!cancelled) setLoading(false);
     })();
 
     return () => {
@@ -37,28 +36,24 @@ export function useLessonNotes(courseId: string, lessonId: string) {
     };
   }, [user, courseId, lessonId]);
 
+  // Save lesson notes to Go backend
   const save = useCallback(
     async (text: string) => {
       if (!user) return;
       setSaving(true);
       setSaved(false);
 
-      const { error } = await supabase
-        .from('lesson_notes')
-        .upsert(
-          {
-            user_id: user.id,
-            course_id: courseId,
-            lesson_id: lessonId,
-            content: text,
-          },
-          { onConflict: 'user_id,lesson_id' }
-        );
-
-      setSaving(false);
-      if (!error) {
+      try {
+        await apiRequest(`/courses/${courseId}/lessons/${lessonId}/notes`, {
+          method: 'POST',
+          body: JSON.stringify({ content: text }),
+        });
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
+      } catch (err) {
+        console.error('Failed to save lesson notes:', err);
+      } finally {
+        setSaving(false);
       }
     },
     [user, courseId, lessonId]

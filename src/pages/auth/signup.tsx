@@ -7,10 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { supabase } from '@/lib/supabase';
-// Note: Signup uses a simulated flow — the app uses mock role-based auth.
 
-export function SignupPage() {
+interface SignupPageProps {
+  portalRole?: 'student' | 'instructor' | 'admin';
+}
+
+export function SignupPage({ portalRole = 'student' }: SignupPageProps) {
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -18,6 +20,9 @@ export function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const roleTitle = portalRole.charAt(0).toUpperCase() + portalRole.slice(1);
+  const loginPath = portalRole === 'student' ? '/login' : `/${portalRole}/login`;
 
   const passwordChecks = [
     { label: 'At least 8 characters', met: password.length >= 8 },
@@ -34,10 +39,10 @@ export function SignupPage() {
     setLoading(true);
     try {
       await new Promise((r) => setTimeout(r, 800));
-      toast.success('Account created', {
-        description: 'Welcome to Akademia — your learning journey starts now.',
+      toast.success(`${roleTitle} account created`, {
+        description: `Welcome to Akademia — your ${portalRole} journey starts now.`,
       });
-      navigate('/login', { replace: true });
+      navigate(loginPath, { replace: true });
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Unable to create account. Please try again.';
@@ -49,8 +54,14 @@ export function SignupPage() {
 
   return (
     <AuthLayout
-      title="Create your account"
-      subtitle="Start learning with an AI coach that adapts to you."
+      title={`Create your ${portalRole} account`}
+      subtitle={
+        portalRole === 'instructor'
+          ? 'Share your knowledge and empower thousands of learners.'
+          : portalRole === 'admin'
+          ? 'Manage users, content, and platform operations.'
+          : 'Start learning with an AI coach that adapts to you.'
+      }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
@@ -77,7 +88,7 @@ export function SignupPage() {
             <Input
               id="email"
               type="email"
-              placeholder="you@example.com"
+              placeholder={`${portalRole}@example.com`}
               autoComplete="email"
               required
               value={email}
@@ -149,7 +160,7 @@ export function SignupPage() {
             </>
           ) : (
             <>
-              Create account
+              Create {roleTitle} account
               <ArrowRight className="ml-2 h-4 w-4" />
             </>
           )}
@@ -158,7 +169,7 @@ export function SignupPage() {
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Already have an account?{' '}
-        <Link to="/login" className="font-medium text-primary hover:underline">
+        <Link to={loginPath} className="font-medium text-primary hover:underline">
           Sign in
         </Link>
       </p>

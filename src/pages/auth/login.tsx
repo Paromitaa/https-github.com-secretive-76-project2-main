@@ -1,250 +1,120 @@
-import { useState, type FormEvent } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Loader as Loader2, Mail, Lock, ArrowRight, Eye, EyeOff, GraduationCap, Users, ShieldCheck, Sparkles, Check, ShieldAlert } from 'lucide-react';
-import { toast } from 'sonner';
-import { AuthLayout } from '@/components/auth/auth-layout';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
-import { useAuth, roleDashboardPath } from '@/components/providers/auth-provider';
-import { getRoleFromDomain, roleAccent } from '@/utils/domain';
-import { cn } from '@/lib/utils';
-import type { UserRole } from '@/types';
+import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '@/components/providers/auth-provider';
 
-const roleConfig: {
-  key: UserRole;
-  label: string;
-  description: string;
-  icon: typeof GraduationCap;
-  email: string;
-}[] = [
-  {
-    key: 'student',
-    label: 'Student',
-    description: 'Access courses, labs, and your AI coach',
-    icon: GraduationCap,
-    email: 'student@akademia.com',
-  },
-  {
-    key: 'instructor',
-    label: 'Instructor',
-    description: 'Manage courses, track student progress',
-    icon: Users,
-    email: 'instructor@akademia.com',
-  },
-  {
-    key: 'admin',
-    label: 'Admin',
-    description: 'Oversee the platform and manage users',
-    icon: ShieldCheck,
-    email: 'admin@akademia.com',
-  },
-];
+interface LoginPageProps {
+  portalRole?: 'student' | 'instructor' | 'admin';
+}
 
-export function LoginPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { signIn } = useAuth();
-
-  const domainRole = getRoleFromDomain();
-  const accent = roleAccent(domainRole);
-  const activeConfig = roleConfig.find((r) => r.key === domainRole)!;
-
-  const [email, setEmail] = useState(activeConfig.email);
+export function LoginPage({ portalRole = 'student' }: LoginPageProps) {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [remember, setRemember] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [accessDenied, setAccessDenied] = useState(false);
 
-  const from = (location.state as { from?: string })?.from;
+  const auth = useAuth() as any;
+  const loginFn = auth.signIn || auth.login || auth.signInWithPassword;
+  const navigate = useNavigate();
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return;
-
+    setError(null);
     setLoading(true);
-    setAccessDenied(false);
+
     try {
-      const user = await signIn(email, password, domainRole);
-      if (user.role !== domainRole) {
-        setAccessDenied(true);
-        toast.error('Access Denied', {
-          description: `This portal is strictly for ${activeConfig.label}s.`,
-        });
-        setLoading(false);
-        return;
-      }
-      toast.success(`Welcome back, ${user.name.split(' ')[0]}!`);
-      const dest = from ?? roleDashboardPath[user.role];
-      navigate(dest, { replace: true });
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Unable to sign in. Please try again.';
-      toast.error('Sign-in failed', { description: message });
+      // Pass portalRole as 3rd parameter to match signIn(email, password, role)
+      await loginFn(email, password, portalRole);
+      navigate(`/${portalRole}/dashboard`, { replace: true });
+    } catch (err: any) {
+      setError(err?.message || 'Invalid credentials. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  const roleTitle = portalRole.charAt(0).toUpperCase() + portalRole.slice(1);
+  const signupPath = portalRole === 'student' ? '/signup' : `/${portalRole}/signup`;
+
   return (
-    <AuthLayout
-      title={`Sign in to the ${activeConfig.label} Portal`}
-      subtitle={`This portal is reserved for ${activeConfig.label.toLowerCase()}s. Use your ${activeConfig.label} credentials to continue.`}
-    >
-      <div className="space-y-4">
-        {/* Domain role badge */}
-        <div className="flex items-center justify-center">
-          <div
-            className={cn(
-              'flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium',
-              accent.border,
-              accent.bg,
-              accent.text
-            )}
-          >
-            <activeConfig.icon className="h-4 w-4" />
-            {activeConfig.label} Portal
-          </div>
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-8 rounded-xl border bg-card p-8 shadow-lg">
+        <div className="text-center">
+          <h2 className="text-3xl font-extrabold tracking-tight text-foreground">
+            {roleTitle} Portal Login
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Sign in to access your {portalRole} dashboard
+          </p>
         </div>
 
-        {/* Access denied banner */}
-        {accessDenied && (
-          <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
-            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
-            <div>
-              <p className="text-sm font-semibold text-foreground">Access Denied</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                These credentials belong to a different role. This portal is strictly for{' '}
-                {activeConfig.label.toLowerCase()}s.
-              </p>
-            </div>
+        {error && (
+          <div className="rounded-md bg-destructive/15 p-4 text-sm text-destructive border border-destructive/20">
+            {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <div className="relative">
-              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
+        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
+          <div className="space-y-4 rounded-md shadow-sm">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-foreground">
+                Email address
+              </label>
+              <input
                 id="email"
+                name="email"
                 type="email"
-                placeholder="you@example.com"
-                autoComplete="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="pl-9"
+                className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary text-sm"
+                placeholder={`${portalRole}@example.com`}
               />
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
-              <Link
-                to="/forgot-password"
-                className="text-xs font-medium text-primary hover:underline"
-              >
-                Forgot password?
-              </Link>
-            </div>
-            <div className="relative">
-              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-foreground">
+                Password
+              </label>
+              <input
                 id="password"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Enter your password"
-                autoComplete="current-password"
+                name="password"
+                type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="pl-9 pr-9"
+                className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary text-sm"
+                placeholder="••••••••"
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="remember"
-                checked={remember}
-                onCheckedChange={(v) => setRemember(v === true)}
-              />
-              <Label htmlFor="remember" className="text-sm text-muted-foreground">
-                Remember me
-              </Label>
-            </div>
+          <div className="flex items-center justify-between text-sm">
+            <Link
+              to="/forgot-password"
+              className="font-medium text-primary hover:text-primary/80"
+            >
+              Forgot your password?
+            </Link>
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Signing in…
-              </>
-            ) : (
-              <>
-                Sign in as {activeConfig.label}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </>
-            )}
-          </Button>
+          <div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="group relative flex w-full justify-center rounded-md bg-primary py-2 px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50"
+            >
+              {loading ? 'Signing in...' : `Sign in as ${roleTitle}`}
+            </button>
+          </div>
         </form>
 
-        {/* Demo credentials hint */}
-        <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 p-3">
-          <Sparkles className={cn('h-4 w-4 shrink-0', accent.text)} />
-          <p className="text-xs text-muted-foreground">
-            Demo credentials are pre-filled. Just enter the password and sign in.
-          </p>
-        </div>
-
-        {/* Other portals */}
-        <div className="space-y-2">
-          <p className="text-center text-xs font-medium text-muted-foreground">
-            Looking for a different portal?
-          </p>
-          <div className="flex items-center justify-center gap-2">
-            {roleConfig
-              .filter((r) => r.key !== domainRole)
-              .map((r) => {
-                const Icon = r.icon;
-                return (
-                  <Badge
-                    key={r.key}
-                    variant="outline"
-                    className="gap-1.5 px-2.5 py-1 text-xs font-medium text-muted-foreground"
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {r.label}
-                  </Badge>
-                );
-              })}
-          </div>
-          <p className="text-center text-[11px] text-muted-foreground/70">
-            Switch subdomain or use the dev toggle to preview other portals.
-          </p>
-        </div>
-
-        <p className="text-center text-sm text-muted-foreground">
+        <div className="text-center text-sm text-muted-foreground">
           Don't have an account?{' '}
-          <Link to="/signup" className="font-medium text-primary hover:underline">
-            Create one
+          <Link to={signupPath} className="font-medium text-primary hover:text-primary/80">
+            Sign up
           </Link>
-        </p>
+        </div>
       </div>
-    </AuthLayout>
+    </div>
   );
 }

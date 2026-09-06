@@ -12,7 +12,8 @@ export interface AuthUser {
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
-  signIn: (email: string, password: string, role: UserRole) => Promise<AuthUser>;
+  signIn: (email: string, password: string, role?: UserRole) => Promise<AuthUser>;
+  login: (email: string, password: string, role?: UserRole) => Promise<AuthUser>;
   signOut: () => void;
 }
 
@@ -66,9 +67,12 @@ function findAccount(email: string, password: string): AuthUser | null {
   return null;
 }
 
-function findAccountByRole(email: string, password: string, role: UserRole): AuthUser | null {
+function findAccountByRole(email: string, password: string, role?: UserRole): AuthUser | null {
+  if (!role) return findAccount(email, password);
+
   const account = mockAccounts[role];
   if (
+    account &&
     account.email.toLowerCase() === email.toLowerCase().trim() &&
     account.password === password
   ) {
@@ -96,14 +100,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, []);
 
-  const signIn = async (email: string, password: string, role: UserRole): Promise<AuthUser> => {
+  const signIn = async (email: string, password: string, role?: UserRole): Promise<AuthUser> => {
     await new Promise((r) => setTimeout(r, 500));
 
+    // Try finding by explicit role if passed, otherwise fall back to matching email + password
     const authedUser = findAccountByRole(email, password, role);
+
     if (!authedUser) {
-      // Also check if credentials are valid but role doesn't match
       const anyAccount = findAccount(email, password);
-      if (anyAccount && anyAccount.role !== role) {
+      if (anyAccount && role && anyAccount.role !== role) {
         throw new Error(
           `These credentials belong to a ${anyAccount.role} account. Please select the correct role.`
         );
@@ -122,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, login: signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,18 +1,17 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
 import {
   DollarSign,
   Users,
   Star,
-  TrendingUp,
-  Eye,
   Plus,
   BarChart3,
   GraduationCap,
   PlayCircle,
   Edit3,
   MoreVertical,
-  ArrowUpRight,
-  ArrowDownRight,
+  Trash2,
+  ExternalLink,
+  Sparkles,
 } from 'lucide-react';
 import {
   Card,
@@ -28,13 +27,32 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { PageHeader } from '@/components/common/page-header';
 import { StatCard } from '@/components/common/stat-card';
 import {
-  instructorCourses,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  instructorCourses as initialCourses,
   studentProgress,
   revenueData,
   instructorReviews,
 } from '@/lib/dashboard-data';
-import { formatNumber, formatCurrency, initials, relativeTime } from '@/lib/format';
+import { formatNumber, formatCurrency, initials } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import {
   AreaChart,
   Area,
@@ -45,6 +63,18 @@ import {
   CartesianGrid,
 } from 'recharts';
 
+interface Course {
+  id: string;
+  title: string;
+  category: string;
+  status: 'published' | 'draft' | 'in-review';
+  students: number;
+  rating: number;
+  revenue: number;
+  completionRate: number;
+  thumbnailUrl: string;
+}
+
 const statusStyles: Record<string, string> = {
   published: 'bg-success/10 text-success border-success/20',
   draft: 'bg-muted text-muted-foreground border-border',
@@ -52,12 +82,62 @@ const statusStyles: Record<string, string> = {
 };
 
 export function InstructorDashboard() {
-  const totalStudents = instructorCourses.reduce((sum, c) => sum + c.students, 0);
-  const totalRevenue = instructorCourses.reduce((sum, c) => sum + c.revenue, 0);
-  const avgRating =
-    instructorCourses.filter((c) => c.rating > 0).reduce((sum, c) => sum + c.rating, 0) /
-    instructorCourses.filter((c) => c.rating > 0).length;
-  const publishedCourses = instructorCourses.filter((c) => c.status === 'published').length;
+  const [courses, setCourses] = useState<Course[]>(
+    initialCourses.map((c: any) => ({
+      id: c.id ?? `course-${Math.random()}`,
+      title: c.title ?? 'Untitled Course',
+      category: c.category ?? 'Development',
+      status: c.status ?? 'draft',
+      students: c.students ?? 0,
+      rating: c.rating ?? 0,
+      revenue: c.revenue ?? 0,
+      completionRate: c.completionRate ?? 0,
+      thumbnailUrl: c.thumbnailUrl ?? 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&auto=format&fit=crop&q=60',
+    }))
+  );
+  const [isNewCourseOpen, setIsNewCourseOpen] = useState(false);
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+
+  // New Course Form State
+  const [newTitle, setNewTitle] = useState('');
+  const [newCategory, setNewCategory] = useState('Development');
+  const [newPrice, setNewPrice] = useState('49.99');
+
+  const totalStudents = courses.reduce((sum, c) => sum + c.students, 0);
+  const totalRevenue = courses.reduce((sum, c) => sum + c.revenue, 0);
+  const ratedCourses = courses.filter((c) => c.rating > 0);
+  const avgRating = ratedCourses.length > 0 ? ratedCourses.reduce((sum, c) => sum + c.rating, 0) / ratedCourses.length : 0;
+  const publishedCourses = courses.filter((c) => c.status === 'published').length;
+
+  const handleCreateCourse = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim()) {
+      toast.error('Please enter a course title.');
+      return;
+    }
+
+    const newCourseObj: Course = {
+      id: `course-${Date.now()}`,
+      title: newTitle,
+      category: newCategory,
+      status: 'draft',
+      students: 0,
+      rating: 0,
+      revenue: 0,
+      completionRate: 0,
+      thumbnailUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&auto=format&fit=crop&q=60',
+    };
+
+    setCourses([newCourseObj, ...courses]);
+    setIsNewCourseOpen(false);
+    setNewTitle('');
+    toast.success('New course draft created successfully!');
+  };
+
+  const handleDeleteCourse = (id: string) => {
+    setCourses(courses.filter((c) => c.id !== id));
+    toast.success('Course removed successfully.');
+  };
 
   return (
     <div className="space-y-8 animate-in-slide">
@@ -66,11 +146,11 @@ export function InstructorDashboard() {
         description="Track course performance, student engagement, and revenue."
         actions={
           <>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => setIsAnalyticsOpen(true)}>
               <BarChart3 className="mr-2 h-4 w-4" />
               Analytics
             </Button>
-            <Button size="sm">
+            <Button size="sm" onClick={() => setIsNewCourseOpen(true)} className="bg-indigo hover:bg-indigo/90 text-indigo-foreground">
               <Plus className="mr-2 h-4 w-4" />
               New course
             </Button>
@@ -106,7 +186,7 @@ export function InstructorDashboard() {
           value={publishedCourses}
           icon={GraduationCap}
           accent="info"
-          trend={{ value: '2 in review/draft', positive: false }}
+          trend={{ value: `${courses.filter(c => c.status !== 'published').length} in review/draft`, positive: false }}
         />
       </div>
 
@@ -169,7 +249,8 @@ export function InstructorDashboard() {
           </CardHeader>
           <CardContent>
             {(() => {
-              const top = instructorCourses[0];
+              const top = courses.length > 0 ? courses[0] : null;
+              if (!top) return <p className="text-sm text-muted-foreground py-8 text-center">No courses available.</p>;
               return (
                 <div className="space-y-4">
                   <div className="relative aspect-video overflow-hidden rounded-lg">
@@ -230,7 +311,7 @@ export function InstructorDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {instructorCourses.map((course) => (
+                {courses.map((course) => (
                   <tr key={course.id} className="transition-colors hover:bg-accent/40">
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-3">
@@ -271,9 +352,28 @@ export function InstructorDashboard() {
                       )}
                     </td>
                     <td className="px-6 py-3 text-right">
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => toast.success(`Opening editor for ${course.title}`)}>
+                            <Edit3 className="mr-2 h-4 w-4" /> Edit Course
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => toast.success(`Previewing ${course.title}`)}>
+                            <ExternalLink className="mr-2 h-4 w-4" /> Preview Live
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteCourse(course.id)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete Course
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
                   </tr>
                 ))}
@@ -354,6 +454,100 @@ export function InstructorDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* New Course Dialog */}
+      <Dialog open={isNewCourseOpen} onOpenChange={setIsNewCourseOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Course</DialogTitle>
+            <DialogDescription>Add a new course to your curriculum catalog.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateCourse} className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="title">Course Title</Label>
+              <Input
+                id="title"
+                placeholder="e.g., Advanced Full-Stack Architecture"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <Select value={newCategory} onValueChange={setNewCategory}>
+                  <SelectTrigger id="category">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Development">Development</SelectItem>
+                    <SelectItem value="Design">Design</SelectItem>
+                    <SelectItem value="Business">Business</SelectItem>
+                    <SelectItem value="AI & ML">AI & ML</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="price">Price ($)</Label>
+                <Input
+                  id="price"
+                  type="number"
+                  step="0.01"
+                  value={newPrice}
+                  onChange={(e) => setNewPrice(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter className="pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsNewCourseOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-indigo hover:bg-indigo/90 text-indigo-foreground">
+                Create Course Draft
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Analytics Modal */}
+      <Dialog open={isAnalyticsOpen} onOpenChange={setIsAnalyticsOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-indigo" /> Detailed Analytics Insights
+            </DialogTitle>
+            <DialogDescription>Performance metrics across your entire instructor portfolio.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-xl border bg-muted/40 p-3 text-center">
+                <p className="text-xs text-muted-foreground">Conversion Rate</p>
+                <p className="text-lg font-bold text-foreground mt-1">24.8%</p>
+              </div>
+              <div className="rounded-xl border bg-muted/40 p-3 text-center">
+                <p className="text-xs text-muted-foreground">Active Learners</p>
+                <p className="text-lg font-bold text-foreground mt-1">{formatNumber(totalStudents)}</p>
+              </div>
+              <div className="rounded-xl border bg-muted/40 p-3 text-center">
+                <p className="text-xs text-muted-foreground">Retention Rate</p>
+                <p className="text-lg font-bold text-foreground mt-1">92.4%</p>
+              </div>
+            </div>
+            <div className="rounded-xl border bg-card p-4 space-y-2">
+              <h4 className="font-semibold text-sm flex items-center gap-1.5">
+                <Sparkles className="h-4 w-4 text-indigo" /> AI Growth Recommendation
+              </h4>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Your course <strong>"{courses[0]?.title || 'Top Course'}"</strong> has a high student enrollment rate. Consider adding an advanced module or live Q&A sessions to boost student lifetime value by an estimated 15%.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsAnalyticsOpen(false)}>Close Insights</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

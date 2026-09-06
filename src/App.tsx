@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Route as RouteIcon, Upload, Users, BookOpen } from 'lucide-react';
+import { Route as RouteIcon, Upload, Users, BookOpen, MessageSquare, Folder, Sparkles } from 'lucide-react';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { AuthProvider } from '@/components/providers/auth-provider';
 import { ProtectedRoute } from '@/components/auth/protected-route';
@@ -25,7 +25,11 @@ import { AdminDashboard } from '@/pages/admin-dashboard';
 import { PlaceholderPage } from '@/pages/placeholder';
 import { UnauthorizedPage } from '@/pages/unauthorized';
 import { Toaster } from '@/components/ui/sonner';
-import { DevDomainToggle } from '@/components/common/DevDomainToggle';
+import { InstructorCoursesPage } from '@/pages/instructor-courses';
+import { InstructorGradingPage } from '@/pages/instructor-grading';
+import { InstructorStudentsPage } from '@/pages/instructor-students';
+import { InstructorDiscussionsPage } from '@/pages/instructor-discussions';
+import { InstructorAiToolsPage } from '@/pages/instructor-ai-tools';
 
 export default function App() {
   return (
@@ -35,8 +39,19 @@ export default function App() {
           <Routes>
             {/* Public */}
             <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
+            
+            {/* Separate Login Portals */}
+            <Route path="/login" element={<LoginPage portalRole="student" />} />
+            <Route path="/student/login" element={<LoginPage portalRole="student" />} />
+            <Route path="/instructor/login" element={<LoginPage portalRole="instructor" />} />
+            <Route path="/admin/login" element={<LoginPage portalRole="admin" />} />
+
+            {/* Separate Signup Portals */}
+            <Route path="/signup" element={<SignupPage portalRole="student" />} />
+            <Route path="/student/signup" element={<SignupPage portalRole="student" />} />
+            <Route path="/instructor/signup" element={<SignupPage portalRole="instructor" />} />
+            <Route path="/admin/signup" element={<SignupPage portalRole="admin" />} />
+
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
@@ -74,16 +89,12 @@ export default function App() {
               <Route element={<AppLayout />}>
                 <Route index element={<Navigate to="/instructor/dashboard" replace />} />
                 <Route path="dashboard" element={<InstructorDashboard />} />
-                <Route
-                  path="courses"
-                  element={
-                    <PlaceholderPage
-                      title="My Courses"
-                      description="Manage your published courses and drafts."
-                      icon={BookOpen}
-                    />
-                  }
-                />
+                <Route path="courses" element={<InstructorCoursesPage />} />
+                <Route path="grading" element={<InstructorGradingPage />} />
+                <Route path="students" element={<InstructorStudentsPage />} />
+                <Route path="discussions" element={<InstructorDiscussionsPage />} />
+            
+                <Route path="ai-tools" element={<InstructorAiToolsPage />} />
                 <Route
                   path="upload"
                   element={
@@ -91,16 +102,6 @@ export default function App() {
                       title="Upload Course"
                       description="Create and publish a new course."
                       icon={Upload}
-                    />
-                  }
-                />
-                <Route
-                  path="students"
-                  element={
-                    <PlaceholderPage
-                      title="Students"
-                      description="Track student progress and engagement."
-                      icon={Users}
                     />
                   }
                 />
@@ -143,7 +144,6 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           <Toaster richColors position="bottom-right" />
-          <DevDomainToggle />
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
